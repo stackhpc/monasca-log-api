@@ -14,15 +14,19 @@
 # under the License.
 
 import falcon
+from oslo_config import cfg
 from oslo_log import log
 
+from monasca_common.simport import simport
 from monasca_log_api.api import exceptions
 from monasca_log_api.api import logs_api
 from monasca_log_api.monitoring import metrics
 from monasca_log_api.reference.common import validation
 from monasca_log_api.reference.v3.common import bulk_processor
 from monasca_log_api.reference.v3.common import helpers
+from monasca_log_api.reference.v3.common import query_requests
 
+CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
 
@@ -42,6 +46,11 @@ class Logs(logs_api.LogsApi):
             name=metrics.LOGS_BULKS_REJECTED_METRIC,
             dimensions=self._metrics_dimensions
         )
+        self._logs_repo = None
+        logs_driver = CONF.repositories.logs_driver
+        if logs_driver:
+            print(logs_driver)
+            self._logs_repo = simport.load(logs_driver)()
 
     def on_post(self, req, res):
         with self._logs_processing_time.time(name=None):
@@ -79,6 +88,24 @@ class Logs(logs_api.LogsApi):
                 return
 
             res.status = falcon.HTTP_204
+
+    def on_get(self, req, res):
+        if not self._logs_repo:
+            LOG.error('Logs repository is not configured')
+            res.status = falcon.HTTP_500
+            return
+
+        args = query_requests.get_list_logs_query(req)
+        elements = self._logs_repo.list_logs(**args)
+        print(elements)
+
+        # Add links
+        body = {'elements': elements}
+
+        print(body)
+
+        res.body = helpers.dumpit_utf8(body)
+        res.status = falcon.HTTP_200
 
     @staticmethod
     def _get_global_dimensions(request_body):
