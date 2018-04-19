@@ -1,5 +1,6 @@
 # Copyright 2016 Hewlett Packard Enterprise Development Company, L.P.
 # Copyright 2016-2017 FUJITSU LIMITED
+# Copyright 2017-2018 StackHPC Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -39,7 +40,7 @@ class Logs(logs_api.LogsApi):
     def __init__(self):
         super(Logs, self).__init__()
 
-        self._region = CONF.service.region  # TODO: What is this used for?
+        self._region = CONF.service.region  # TODO(dszumski): Not used?
         role_conf = CONF.roles_middleware
         self._delegate_authorized_roles = (
             role_conf.delegate_roles)
@@ -120,7 +121,7 @@ class Logs(logs_api.LogsApi):
             helpers.get_x_tenant_or_tenant_id(req,
                                               self._delegate_authorized_roles))
 
-        # TODO: Check these get translated into ES speak correctly
+        # TODO(dszumski): Check these get translated into ES speak correctly
         args = Logs._get_list_logs_query(req, project_id)
 
         elements = self._logs_repo.list_logs(**args)
@@ -150,18 +151,19 @@ class Logs(logs_api.LogsApi):
             dimensions = [logs_repository.Dimension(*d) for d in
                           helpers.validate_query_dimensions(dimensions)]
 
+        # TODO(dszumski): No start?!
         start_timestamp = helpers.get_query_starttime_timestamp(req,
-                                                                False)  # TODO: No start?!
+                                                                False)
         end_timestamp = helpers.get_query_endtime_timestamp(req, False)
         helpers.validate_timestamp_order(start_timestamp,
-                                         end_timestamp)  # TODO: Method renamed + tweaked for no start
+                                         end_timestamp)
 
         offset = helpers.get_int_query_param(req, 'offset')
         limit = helpers.get_int_query_param(req, 'limit', default_val='10')
 
         sort_by = helpers.get_sort_by(req)
 
-        # TODO: Check these get translated into ES speak correctly
+        # TODO(dszumski): Check these get translated into ES speak correctly
         return {
             'tenant_id': project_id,
             'dimensions': dimensions,

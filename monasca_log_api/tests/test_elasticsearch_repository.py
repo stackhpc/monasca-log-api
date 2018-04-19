@@ -1,4 +1,4 @@
-# Copyright 2017-2018 StackHPC
+# Copyright 2017-2018 StackHPC Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -13,10 +13,11 @@
 # under the License.
 
 import unittest
-from oslo_config import cfg
+
 from monasca_log_api.common.repositories.elasticsearch import logs_repository \
     as es_repo
 from monasca_log_api.common.repositories import logs_repository
+from oslo_config import cfg
 
 Dimension = logs_repository.Dimension
 SortBy = logs_repository.SortBy

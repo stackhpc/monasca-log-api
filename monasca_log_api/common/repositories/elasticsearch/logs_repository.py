@@ -1,4 +1,4 @@
-# Copyright 2017-2018 StackHPC
+# Copyright 2017-2018 StackHPC Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -59,9 +59,12 @@ class LogsRepository(logs_repository.AbstractLogsRepository):
 
         def tidy(doc):
             return {
-                u'timestamp': get(doc, cfg.CONF.elasticsearch.timestamp_field),
-                u'message': get(doc, cfg.CONF.elasticsearch.message_field),
-                u'dimensions': get(doc, cfg.CONF.elasticsearch.dimensions_field)
+                u'timestamp': get(doc,
+                                  cfg.CONF.elasticsearch.timestamp_field),
+                u'message': get(doc,
+                                cfg.CONF.elasticsearch.message_field),
+                u'dimensions': get(doc,
+                                   cfg.CONF.elasticsearch.dimensions_field)
             }
 
         return [tidy(hit['_source']) for hit in result['hits']['hits']]
@@ -81,7 +84,6 @@ class LogsRepository(logs_repository.AbstractLogsRepository):
             es.search(**kwargs)
 
         """
-        # TODO: Is this not the project ID most of the time?
         index = LogsRepository._index(tenant_id)
         body = LogsRepository._body(dimensions, start_time, end_time, offset,
                                     limit,

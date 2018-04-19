@@ -1,4 +1,4 @@
-# Copyright 2017 StackHPC
+# Copyright 2017-2018 StackHPC Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -16,10 +16,10 @@ import json
 import unittest
 
 import falcon
-import fixtures
-import oslo_config
 from falcon import testing
+import fixtures
 from mock import Mock
+import oslo_config
 
 from monasca_log_api.app.base import exceptions
 from monasca_log_api.app.controller.api import headers
@@ -28,7 +28,7 @@ from monasca_log_api.common.repositories import logs_repository
 from monasca_log_api.tests import base
 
 REPOSITORY = (
-    'monasca_log_api.common.repositories.logs_repository:AbstractLogsRepository'
+    'monasca_log_api.common.repositories.logs_repository:AbstractLogsRepository'  # noqa
 )
 
 
@@ -89,7 +89,8 @@ class TestLogsQuery(TestLogsQueryBase):
     def setUp(self):
         super(TestLogsQuery, self).setUp()
         self.conf.set_override('logs_driver', REPOSITORY, group='repositories')
-        self.conf.set_override('default_roles', 'rolebadger', group='roles_middleware')
+        self.conf.set_override(
+            'default_roles', 'rolebadger', group='roles_middleware')
         self._init_resource()
         self.list_logs_mock.return_value = {}
 
@@ -141,6 +142,7 @@ class TestLogsQuery(TestLogsQueryBase):
 
         self.assertEqual(falcon.HTTP_200, self.srmock.status)
         self.assertEqual({'elements': [{'some': 'data'}]}, response)
+
 
 def make_req(q, project_id=None):
     req = Mock()
