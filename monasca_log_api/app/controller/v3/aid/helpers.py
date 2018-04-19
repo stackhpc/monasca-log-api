@@ -32,6 +32,7 @@ from monasca_log_api.common.repositories import logs_repository
 LOG = log.getLogger(__name__)
 
 
+# TODO: Very similar to code in Monasca-API refactor
 def read_json_msg_body(req):
     """Read the json_msg from the http request body and return them as JSON.
 
@@ -69,7 +70,7 @@ def get_logs(request_body):
     return request_body['logs']
 
 
-# TODO: Factor to common lib - a lot of code shared with mon-api
+# TODO: Shared with Monasca-API - factor to common library
 def validate_authorization(req, authorized_roles):
     """Validates whether one or more X-ROLES in the HTTP header is authorized.
 
@@ -102,6 +103,7 @@ def validate_authorization(req, authorized_roles):
                                   challenge)
 
 
+# TODO: Shared with Monasca-API - factor to common library
 def get_x_tenant_or_tenant_id(req, delegate_authorized_roles):
     """Evaluates whether the tenant ID or cross tenant ID should be returned.
 
@@ -124,7 +126,7 @@ def get_x_tenant_or_tenant_id(req, delegate_authorized_roles):
     # AKA tenant_id
     return req.project_id
 
-
+# TODO: Shared with Monasca-API - factor to common library
 def get_query_param(req, param_name, required=False, default_val=None):
     try:
         params = falcon.uri.parse_query_string(req.query_string)
@@ -145,6 +147,7 @@ def get_query_param(req, param_name, required=False, default_val=None):
         raise exceptions.HTTPUnprocessableEntity(str(ex))
 
 
+# TODO: Shared with Monasca-API - factor to common library
 def get_query_dimensions(req, param_key='dimensions'):
     """Gets and parses the query param dimensions.
 
@@ -218,7 +221,7 @@ def validate_query_dimensions(dimensions):
         LOG.debug(ex)
         raise exceptions.HTTPUnprocessableEntity(str(ex))
 
-
+# TODO: Shared with Monasca-API - factor to common library
 def get_query_starttime_timestamp(req, required=True):
     try:
         params = falcon.uri.parse_query_string(req.query_string)
@@ -234,6 +237,7 @@ def get_query_starttime_timestamp(req, required=True):
         raise exceptions.HTTPUnprocessableEntity(str(ex))
 
 
+# TODO: Shared with Monasca-API - factor to common library
 def get_query_endtime_timestamp(req, required=True):
     try:
         params = falcon.uri.parse_query_string(req.query_string)
@@ -246,9 +250,10 @@ def get_query_endtime_timestamp(req, required=True):
                 return None
     except Exception as ex:
         LOG.debug(ex)
-        raise exceptions.HTTPUnprocessableEntity(str(ex))
+        raise exceptions.HTTPUnprocessableEntity('Unprocessable Entity', str(ex))
 
 
+# TODO: Shared with Monasca-API - factor to common library
 def validate_timestamp_order(start_timestamp, end_timestamp):
     if start_timestamp is not None and end_timestamp is not None:
         if start_timestamp > end_timestamp:
@@ -256,6 +261,7 @@ def validate_timestamp_order(start_timestamp, end_timestamp):
                                         'start_time must be before end_time')
 
 
+# TODO: Shared with Monasca-API - factor to common library
 def _convert_time_string(date_time_string):
     dt = timeutils.parse_isotime(date_time_string)
     dt = timeutils.normalize_time(dt)
