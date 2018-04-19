@@ -16,11 +16,13 @@
 import falcon
 from oslo_log import log
 
+from monasca_common.simport import simport
 from monasca_log_api.app.base import exceptions
 from monasca_log_api.app.base import validation
 from monasca_log_api.app.controller.api import logs_api
 from monasca_log_api.app.controller.v3.aid import bulk_processor
 from monasca_log_api.app.controller.v3.aid import helpers
+from monasca_log_api.common.repositories import logs_repository
 from monasca_log_api import conf
 from monasca_log_api.monitoring import metrics
 
@@ -37,6 +39,13 @@ class Logs(logs_api.LogsApi):
     def __init__(self):
         super(Logs, self).__init__()
 
+        self._region = CONF.service.region  # TODO: What is this used for?
+        role_conf = CONF.roles_middleware
+        self._delegate_authorized_roles = (
+            role_conf.delegate_roles)
+        self._get_logs_authorized_roles = (role_conf.default_roles +
+                                           role_conf.read_only_roles)
+
         if CONF.monitoring.enable:
             self._processor = bulk_processor.BulkProcessor(
                 logs_in_counter=self._logs_in_counter,
@@ -48,6 +57,11 @@ class Logs(logs_api.LogsApi):
             )
         else:
             self._processor = bulk_processor.BulkProcessor()
+
+        self._logs_repo = None
+        logs_driver = CONF.repositories.logs_driver
+        if logs_driver:
+            self._logs_repo = simport.load(logs_driver)()
 
     def on_post(self, req, res):
         if CONF.monitoring.enable:
@@ -93,6 +107,27 @@ class Logs(logs_api.LogsApi):
 
         res.status = falcon.HTTP_204
 
+    def on_get(self, req, res):
+        if not self._logs_repo:
+            LOG.error('Logs repository is not configured. Please configure'
+                      'a log driver in the monasca log api configuration file')
+            res.status = falcon.HTTP_500
+            return
+
+        helpers.validate_authorization(req, self._get_logs_authorized_roles)
+        # Note could be project id if request role is not delegate
+        project_id = (
+            helpers.get_x_tenant_or_tenant_id(req,
+                                              self._delegate_authorized_roles))
+
+        # TODO: Check these get translated into ES speak correctly
+        args = Logs._get_list_logs_query(req, project_id)
+
+        elements = self._logs_repo.list_logs(**args)
+        body = {'elements': elements}
+        res.body = helpers.dumpit_utf8(body)
+        res.status = falcon.HTTP_200
+
     @staticmethod
     def _get_global_dimensions(request_body):
         """Get the top level dimensions in the HTTP request body."""
@@ -107,3 +142,32 @@ class Logs(logs_api.LogsApi):
             raise exceptions.HTTPUnprocessableEntity(
                 'Unprocessable Entity Logs not found')
         return request_body['logs']
+
+    @staticmethod
+    def _get_list_logs_query(req, project_id):
+        dimensions = helpers.get_query_dimensions(req)
+        if dimensions:
+            dimensions = [logs_repository.Dimension(*d) for d in
+                          helpers.validate_query_dimensions(dimensions)]
+
+        start_timestamp = helpers.get_query_starttime_timestamp(req,
+                                                                False)  # TODO: No start?!
+        end_timestamp = helpers.get_query_endtime_timestamp(req, False)
+        helpers.validate_timestamp_order(start_timestamp,
+                                         end_timestamp)  # TODO: Method renamed + tweaked for no start
+
+        offset = helpers.get_int_query_param(req, 'offset')
+        limit = helpers.get_int_query_param(req, 'limit', default_val='10')
+
+        sort_by = helpers.get_sort_by(req)
+
+        # TODO: Check these get translated into ES speak correctly
+        return {
+            'tenant_id': project_id,
+            'dimensions': dimensions,
+            'start_time': start_timestamp,
+            'end_time': end_timestamp,
+            'offset': offset,
+            'limit': limit,
+            'sort_by': sort_by
+        }
