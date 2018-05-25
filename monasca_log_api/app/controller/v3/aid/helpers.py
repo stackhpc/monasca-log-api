@@ -2,6 +2,7 @@
 # Copyright 2015 Cray Inc. All Rights Reserved.
 # Copyright 2016 Hewlett Packard Enterprise Development Company LP
 # Copyright 2016 FUJITSU LIMITED
+# Copyright 2017-2018 StackHPC Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -21,6 +22,8 @@ from oslo_log import log
 
 from monasca_log_api.app.base import exceptions
 from monasca_log_api.app.base import validation
+from monasca_log_api.db.common import model
+from monasca_log_api.db.repo import logs_repository
 
 LOG = log.getLogger(__name__)
 
@@ -60,3 +63,43 @@ def get_logs(request_body):
         raise exceptions.HTTPUnprocessableEntity(
             'Unprocessable Entity Logs not found')
     return request_body['logs']
+
+
+def get_int_query_param(param):
+    val = rest_utils.get_query_param(param)
+    if val is None or isinstance(val, int):
+        return val
+    try:
+        return int(float(val))
+    except Exception:
+        raise exceptions.HTTPUnprocessableEntity(
+            'Parameter {} value {} must be parsable to an int'.format(param,
+                                                                      val))
+
+
+def get_sort_by(sort_by):
+    if not sort_by:
+        return
+    if not isinstance(sort_by, list):
+        sort_by = sort_by.split(',')
+    result = []
+    for sort_by_field in sort_by:
+        parts = sort_by_field.split()
+        if len(parts) > 2:
+            raise exceptions.HTTPUnprocessableEntity(
+                "Invalid sort_by {}".format(sort_by_field))
+        if parts[0] not in logs_repository.SORT_BY_FIELDS:
+            raise exceptions.HTTPUnprocessableEntity(
+                "The sort_by field {} must be one of: [{}]".format(
+                    parts[0],
+                    ', '.join(logs_repository.SORT_BY_FIELDS)))
+        if len(parts) == 1:
+            # No sort order specified, use default
+            parts.append(logs_repository.DEFAULT_SORT_ORDER)
+        allowed_sort_by_orders = logs_repository.SORT_BY_ORDERS.values()
+        if len(parts) > 1 and parts[1] not in allowed_sort_by_orders:
+            raise exceptions.HTTPUnprocessableEntity(
+                "The sort_by value {} must be one of: [{}]".format(
+                    parts[1], ', '.join(allowed_sort_by_orders)))
+        result.append(model.SortBy(*parts))
+    return result

@@ -1,5 +1,6 @@
 # Copyright 2016 Hewlett Packard Enterprise Development Company, L.P.
 # Copyright 2016-2017 FUJITSU LIMITED
+# Copyright 2017-2018 StackHPC Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -14,13 +15,18 @@
 # under the License.
 
 import falcon
+import json
+from monasca_common.rest import utils as rest_utils
+from monasca_common.simport import simport
 from oslo_log import log
+from oslo_utils import encodeutils
 
 from monasca_log_api.app.base import exceptions
 from monasca_log_api.app.base import validation
 from monasca_log_api.app.controller.api import logs_api
 from monasca_log_api.app.controller.v3.aid import bulk_processor
 from monasca_log_api.app.controller.v3.aid import helpers
+from monasca_log_api.app.controller.v3.schemas import log_query_schema
 from monasca_log_api import conf
 from monasca_log_api.monitoring import metrics
 
@@ -37,6 +43,12 @@ class Logs(logs_api.LogsApi):
     def __init__(self):
         super(Logs, self).__init__()
 
+        self._region = CONF.service.region
+        role_conf = CONF.roles_middleware
+        self._delegate_authorized_roles = role_conf.delegate_roles
+        self._get_logs_authorized_roles = (role_conf.default_roles +
+                                           role_conf.read_only_roles)
+
         if CONF.monitoring.enable:
             self._processor = bulk_processor.BulkProcessor(
                 logs_in_counter=self._logs_in_counter,
@@ -48,6 +60,11 @@ class Logs(logs_api.LogsApi):
             )
         else:
             self._processor = bulk_processor.BulkProcessor()
+
+        self._logs_repo = None
+        logs_driver = CONF.repositories.logs_driver
+        if logs_driver:
+            self._logs_repo = simport.load(logs_driver)()
 
     def on_post(self, req, res):
         if CONF.monitoring.enable:
@@ -92,6 +109,42 @@ class Logs(logs_api.LogsApi):
             return
 
         res.status = falcon.HTTP_204
+
+    def on_get(self, req, res):
+        if not self._logs_repo:
+            LOG.error(
+                'Logs repository is not configured. Please configure'
+                'a log driver in the Monasca Log API configuration file.')
+            res.status = falcon.HTTP_500
+            return
+
+        rest_utils.validate_authorization(req, self._get_logs_authorized_roles)
+
+        try:
+            raw_query = falcon.uri.parse_query_string(req.query_string)
+            query = log_query_schema.request_body_schema(raw_query)
+            rest_utils.validate_timestamp_order(query.get('start_time'),
+                                                query.get('end_time'))
+            # Support cross project queries
+            query['tenant_id'] = (
+                rest_utils.get_x_tenant_or_tenant_id(
+                    req,  self._delegate_authorized_roles))
+        except Exception as ex:
+            LOG.debug(ex)
+            res.status = getattr(
+                ex, 'status', falcon.HTTP_UNPROCESSABLE_ENTITY)
+            return
+
+        try:
+            query['region'] = self._region
+            elements = self._logs_repo.list_logs(**query)
+            body = json.dumps({'elements': elements}, ensure_ascii=False)
+            res.body = encodeutils.to_utf8(body)
+        except Exception as ex:
+            res.status = getattr(ex, 'status', falcon.HTTP_500)
+            return
+
+        res.status = falcon.HTTP_200
 
     @staticmethod
     def _get_global_dimensions(request_body):

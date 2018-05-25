@@ -1,4 +1,5 @@
 # Copyright 2017 FUJITSU LIMITED
+# Copyright 2018 StackHPC Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -22,10 +23,13 @@ role_m_opts = [
                 default=['monasca-user'],
                 help='List of roles allowed to enter api'),
     cfg.ListOpt(name='agent_roles',
-                default=None,
+                default=[],
                 help=('List of roles, that if set, mean that request '
                       'comes from agent, thus is authorized in the same '
                       'time')),
+    cfg.ListOpt(name='read_only_roles',
+                default=['monasca-read-only-user'],
+                help='List of roles with GET only access to the API'),
     cfg.ListOpt(name='delegate_roles',
                 default=['admin'],
                 help=('Roles that are allowed to POST logs on '

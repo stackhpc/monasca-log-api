@@ -1,4 +1,4 @@
-# Copyright 2017 StackHPC
+# Copyright 2017-2018 StackHPC Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -16,15 +16,18 @@ import abc
 import six
 
 
-@six.add_metaclass(abc.ABCMeta)
-class LogsRepository(object):
+SORT_BY_FIELDS = {'timestamp'}
+SORT_BY_ORDERS = {'ascending': 'asc',
+                  'descending': 'desc'}
+DEFAULT_SORT_ORDER = 'desc'
 
-    def __init__(self):
-        super(LogsRepository, self).__init__()
+
+@six.add_metaclass(abc.ABCMeta)
+class AbstractLogsRepository(object):
 
     @abc.abstractmethod
-    def list_logs(self, tenant_id, dimensions, start_time, end_time, offset,
-                  limit, sort_by):
+    def list_logs(self, tenant_id, region, dimensions, start_time, end_time,
+                  offset, limit, sort_by):
         """Obtain log listing based on simple criteria of dimension values.
 
         Performs queries on the underlying log storage against a time range and
@@ -33,6 +36,8 @@ class LogsRepository(object):
 
         :param tenant_id:
             Tenant/project id for which to obtain logs (required).
+        :param region:
+            Region for which to obtain logs (required).
         :param dimensions:
             List of Dimension tuples containing pairs of dimension names and
             optional lists of dimension values. These will be used to filter
@@ -41,9 +46,9 @@ class LogsRepository(object):
             dimension must match any of the given values. If None is given,
             logs with any value for the dimension will be returned.
         :param start_time:
-            Optional starting time in UNIX time (seconds, inclusive).
+            Optional starting time in UNIX time (integer seconds, inclusive).
         :param end_time:
-            Optional ending time in UNIX time (seconds, inclusive).
+            Optional ending time in UNIX time (integer seconds, inclusive).
         :param offset:
             Number of matching results to skip past, if specified.
         :param limit:

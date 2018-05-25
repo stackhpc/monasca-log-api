@@ -13,6 +13,9 @@ oslo.log>=3.36.0 # Apache-2.0
 oslo.serialization!=2.19.1,>=2.18.0 # Apache-2.0
 oslo.utils>=3.33.0 # Apache-2.0
 PasteDeploy>=1.5.0 # MIT
-monasca-common>=2.7.0 # Apache-2.0
+monasca-common>=2.10.0 # Apache-2.0
 eventlet!=0.18.3,!=0.20.1,!=0.21.0,>=0.18.2  # MIT
 monasca-statsd>=1.1.0 # Apache-2.0
+elasticsearch>=2.0.0,<=3.0.0 # Apache-2.0
+six>=1.10.0 # MIT
+voluptuous>=0.8.9 # BSD License
